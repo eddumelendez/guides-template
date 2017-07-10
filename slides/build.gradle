@@ -1,0 +1,90 @@
+buildscript {
+    dependencies {
+        classpath 'org.ysb33r.gradle:vfs-gradle-plugin:1.0'
+        classpath 'commons-httpclient:commons-httpclient:3.1'
+    }
+}
+
+plugins {
+    id 'org.asciidoctor.convert' version '1.5.3'
+    id 'com.github.jruby-gradle.base' version '1.4.0'
+    id 'org.kordamp.gradle.livereload' version '0.2.1'
+}
+
+apply plugin: 'com.github.jruby-gradle.base'
+apply plugin: 'org.ysb33r.vfs'
+apply plugin: 'org.asciidoctor.convert'
+apply plugin: 'org.kordamp.gradle.livereload'
+
+ext {
+    revealjsVersion = '3.5.0'
+    asciidoctorBackendVersion = 'master'
+    downloadDir = new File(buildDir, 'download')
+    templateDir = new File(downloadDir, 'templates')
+    revealjsDir = new File(downloadDir, 'reveal.js')
+}
+
+dependencies {
+    gems 'rubygems:slim:3.0.8'
+    gems 'rubygems:thread_safe:0.3.5'
+}
+
+task download {
+    doLast {
+        mkdir downloadDir
+        vfs {
+            cp "zip:https://github.com/asciidoctor/asciidoctor-reveal.js/archive/${asciidoctorBackendVersion}.zip!asciidoctor-reveal.js-${asciidoctorBackendVersion}",
+                    templateDir, recursive: true, overwrite: true
+            cp "zip:https://github.com/hakimel/reveal.js/archive/${revealjsVersion}.zip!reveal.js-${revealjsVersion}",
+                    revealjsDir, recursive: true, overwrite: true
+        }
+    }
+}
+
+download {
+    description "Download extra revealjs resources"
+    outputs.dir templateDir
+    outputs.dir revealjsDir
+}
+
+asciidoctorj {
+    version = '1.5.5'
+}
+
+asciidoctor {
+    dependsOn jrubyPrepare, download
+
+    sources {
+        include 'index.adoc'
+    }
+
+    resources {
+        from(sourceDir) {
+            include 'images/**'
+        }
+        from(downloadDir) {
+            include 'reveal.js/**'
+        }
+    }
+
+    backends 'revealjs'
+
+    attributes 'source-highlighter': 'coderay',
+            'imagesdir': './images',
+            'toc': 'left',
+            'icons': 'font',
+            'setanchors': 'true',
+            'idprefix': '',
+            'idseparator': '-',
+            'docinfo1': 'true',
+            'revealjs_theme': 'black',
+            'revealjs_transition': 'linear',
+            'revealjs_history': 'true',
+            'revealjs_slideNumber': 'true'
+
+    options template_dirs: [new File(templateDir, 'templates/slim').absolutePath]
+}
+
+liveReload {
+    docRoot asciidoctor.outputDir.canonicalPath
+}
