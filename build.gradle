@@ -20,3 +20,9 @@ asciidoctor {
 liveReload {
     docRoot asciidoctor.outputDir.canonicalPath
 }
+
+task docsZip(type: Zip) {
+    dependsOn asciidoctor
+    baseName "$baseName-docs"
+    from asciidoctor.outputDir
+}
